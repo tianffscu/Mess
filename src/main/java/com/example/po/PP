@@ -1,0 +1,213 @@
+package com.dianping.dbh.api.paySwitchConfig.controller;
+
+import com.alibaba.fastjson.JSONObject;
+import com.dianping.dbh.api.paySwitchConfig.request.PayChannelQueryRequest;
+import com.dianping.dbh.api.paySwitchConfig.request.PayChannelUpdateRequest;
+import com.dianping.dbh.api.paySwitchConfig.util.LionOperationUtil;
+import com.dianping.dbh.api.paySwitchConfig.vo.PaySwitchConfigVo;
+import com.dianping.dbh.api.qrcode.entity.DBHackResponse;
+import com.dianping.dbh.log.LoggerConfig;
+import com.dianping.ed.logger.EDLogger;
+import com.dianping.ed.logger.LoggerManager;
+<<<<<<< HEAD
+import com.dianping.hobbit.response.ResponseCode;
+import com.dianping.poi.flow.dto.MtPoiDto;
+import com.dianping.poi.flow.service.MtPoiService;
+import com.sankuai.meituan.poiop.api.thrift.vo.poi.FindPoisByIdsV2ResultDO;
+import com.sankuai.meituan.poiop.api.thrift.vo.poi.StagePoiView;
+import com.sankuai.meituan.poiop.client.thrift.ApiPoiClient;
+=======
+import com.dianping.orderdish.shop.config.ShopConfigCommandService;
+import com.dianping.orderdish.shop.config.ShopConfigQueryService;
+import com.dianping.poi.flow.dto.MtPoiDto;
+import com.dianping.poi.flow.service.MtPoiService;
+import com.sleepycat.je.tree.IN;
+>>>>>>> tf_20171122_AlipaySwitch
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import javax.naming.InsufficientResourcesException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Created by njufancy on 2017/10/23.
+ */
+
+@Controller
+@RequestMapping("/configs/payChannelSwitch")
+public class PaySwitchConfigController {
+
+    @Autowired
+    private MtPoiService mtPoiService;
+
+    @Autowired
+    ApiPoiClient apiPoiClient;
+
+
+
+    private static final EDLogger ERROR = LoggerManager.getLogger(LoggerConfig.PAY_SWITCH_CONFIG_CONTROLLER_ERROR.getValue());
+
+    private static final String MT_ID = "1";
+    private static final String DP_ID = "2";
+    private static final String ALIPAY_BLACKLIST_LION = "hobbit-m-web.hack.alipay.shopBlackList";
+
+    @Autowired
+    private ShopConfigQueryService shopConfigQueryService;
+    @Autowired
+    private ShopConfigCommandService shopConfigCommandService;
+
+    @RequestMapping(value = "/query")
+    @ResponseBody
+    public DBHackResponse<PaySwitchConfigVo> query(PayChannelQueryRequest payChannelQueryRequest) {
+        try {
+            if (payChannelQueryRequest == null || payChannelQueryRequest.getShopId() == null) {
+                return DBHackResponse.onServerErr("参数错误");
+            }
+
+            int mtShopId, dpShopId;
+            if (payChannelQueryRequest.getShopIdType().equals(MT_ID)) {
+                mtShopId = Integer.parseInt(payChannelQueryRequest.getShopId());
+                List<Integer> dpShopIds = mtPoiService.queryMatchedDpId(mtShopId);
+                if (CollectionUtils.isEmpty(dpShopIds)) {
+                    throw new RuntimeException("查询对应的点评门店id失败，美团门店 id：" + mtShopId);
+                }
+                dpShopId = dpShopIds.get(0);
+            } else if (payChannelQueryRequest.getShopIdType().equals(DP_ID)) {
+                dpShopId = Integer.parseInt(payChannelQueryRequest.getShopId());
+                List<Integer> mtShopIds = mtPoiService.queryMatchedMtId(dpShopId);
+                if (CollectionUtils.isEmpty(mtShopIds)) {
+                    throw new RuntimeException("查询对应的美团门店id失败，点评门店 id：" + dpShopId);
+                }
+                mtShopId = mtShopIds.get(0);
+            } else {
+                throw new RuntimeException("门店类型错误, 门店id: " + payChannelQueryRequest.getShopId());
+            }
+
+<<<<<<< HEAD
+            FindPoisByIdsV2ResultDO resultDO = apiPoiClient.findPoisByIdsV2(Arrays.asList((long) mtShopId), null);
+
+            if(resultDO==null||resultDO.getCode()!= ResponseCode.SUCCESS||resultDO.getData()==null){
+                throw new RuntimeException("查询门店信息失败, 美团门店 id:" + mtShopId);
+            }
+
+            StagePoiView poi=resultDO.getData().get(0);
+
+            if(poi.getId()==0||!poi.isSetId()){
+=======
+            MtPoiDto mtPoiDto = mtPoiService.queryMtPoiByMtShopIdFromMt(mtShopId, null);
+            if (mtPoiDto == null) {
+>>>>>>> tf_20171122_AlipaySwitch
+                throw new RuntimeException("查询门店信息失败, 美团门店 id:" + mtShopId);
+            }
+
+            PaySwitchConfigVo paySwitchConfigVo = new PaySwitchConfigVo();
+            paySwitchConfigVo.setDpShopId(dpShopId);
+            paySwitchConfigVo.setMtShopId(mtShopId);
+<<<<<<< HEAD
+
+            paySwitchConfigVo.setShopName(poi.getPointName());
+            ArrayList<Integer> blackList = LionOperationUtil.readLion(ALIPAY_BLACKLIST_LION);
+            boolean aliPaySwitch = !blackList.contains(dpShopId);
+            paySwitchConfigVo.setAliPaySwitch(aliPaySwitch);
+=======
+            if (StringUtils.isNotBlank(mtPoiDto.getMtBranchName())) {
+                paySwitchConfigVo.setShopName(mtPoiDto.getMtShopName() + "（" + mtPoiDto.getMtBranchName() + "）");
+            } else {
+                paySwitchConfigVo.setShopName(mtPoiDto.getMtShopName());
+            }
+//            ArrayList<Integer> blackList = LionOperationUtil.readLion(ALIPAY_BLACKLIST_LION);
+//            boolean aliPaySwitch = !blackList.contains(dpShopId);
+//            paySwitchConfigVo.setAliPaySwitch(aliPaySwitch);
+
+            /////////FIXME//////////findout MTShopId or DPShopId
+            int shopId = 00000000;
+            Boolean isHackAlipayBlack = Boolean.parseBoolean(shopConfigQueryService.findShopConfigByShopIdAndKey(shopId, "isHackAlipayBlack"));
+            paySwitchConfigVo.setAliPaySwitch(!isHackAlipayBlack);
+>>>>>>> tf_20171122_AlipaySwitch
+
+            return DBHackResponse.onSuccess(paySwitchConfigVo);
+        } catch (Exception e) {
+            ERROR.error("query paySwitchConfig fail", e);
+            return DBHackResponse.onServerErr(e.getMessage());
+        }
+    }
+
+    @RequestMapping(value = "/update")
+    @ResponseBody
+    public DBHackResponse update(@RequestBody PayChannelUpdateRequest payChannelUpdateRequest) {
+//        if (payChannelUpdateRequest == null  || (payChannelUpdateRequest.getDpShopId() == null && payChannelUpdateRequest.getMtShopId() == null)) {
+//            return DBHackResponse.onServerErr("参数错误");
+//        }
+
+        int mtShopId, dpShopId;
+        if (payChannelUpdateRequest == null) {
+            return DBHackResponse.onServerErr("参数错误");
+        } else if (payChannelUpdateRequest.getMtShopId() != null) {
+            mtShopId = Integer.parseInt(payChannelUpdateRequest.getMtShopId());
+            List<Integer> dpShopIds = mtPoiService.queryMatchedDpId(mtShopId);
+            if (CollectionUtils.isEmpty(dpShopIds)) {
+                throw new RuntimeException("查询对应的点评门店id失败，美团门店 id：" + mtShopId);
+            }
+            dpShopId = dpShopIds.get(0);
+        } else if (payChannelUpdateRequest.getDpShopId() != null) {
+            dpShopId = Integer.parseInt(payChannelUpdateRequest.getDpShopId());
+            List<Integer> mtShopIds = mtPoiService.queryMatchedMtId(dpShopId);
+            if (CollectionUtils.isEmpty(mtShopIds)) {
+                throw new RuntimeException("查询对应的美团门店id失败，点评门店 id：" + dpShopId);
+            }
+            mtShopId = mtShopIds.get(0);
+        } else {
+            return DBHackResponse.onServerErr("参数错误,门店id为空");
+//            throw new RuntimeException("门店类型错误, 门店id为空");
+        }
+
+//        ArrayList<Integer> blackList = LionOperationUtil.readLion(ALIPAY_BLACKLIST_LION);
+//        boolean aliPaySwitch = !blackList.contains(Integer.parseInt(payChannelUpdateRequest.getDpShopId()));
+
+        String queryConfigResult = shopConfigQueryService.findShopConfigByShopIdAndKey(dpShopId, "isHackAlipayBlack");
+
+        boolean isHackAlipayBlack = (!StringUtils.isEmpty(queryConfigResult)) && Boolean.parseBoolean(queryConfigResult);
+
+        /*if (payChannelUpdateRequest.isAliPaySwitch() == aliPaySwitch) {
+            return DBHackResponse.onServerErr("门店开关状态不同步，请刷新后重试");
+        }
+        boolean result;
+        if (payChannelUpdateRequest.isAliPaySwitch()) {
+            blackList.remove((Integer) Integer.parseInt(payChannelUpdateRequest.getDpShopId()));
+            result = LionOperationUtil.updateLionKey(ALIPAY_BLACKLIST_LION, StringUtils.join(blackList, ","), "aliPaySwitchUpdate");
+        } else {
+            blackList.add(Integer.parseInt(payChannelUpdateRequest.getDpShopId()));
+            result = LionOperationUtil.updateLionKey(ALIPAY_BLACKLIST_LION, StringUtils.join(blackList, ","), "aliPaySwitchUpdate");
+        }
+        if (result) {
+            return DBHackResponse.onSuccess();
+        } else {
+            return DBHackResponse.onServerErr("更改门店状态失败");
+        }*/
+
+
+        if (payChannelUpdateRequest.isAliPaySwitch() == aliPaySwitch) {
+            return DBHackResponse.onServerErr("门店开关状态不同步，请刷新后重试");
+        }
+        boolean result;
+        if (payChannelUpdateRequest.isAliPaySwitch()) {
+            blackList.remove((Integer) Integer.parseInt(payChannelUpdateRequest.getDpShopId()));
+            result = LionOperationUtil.updateLionKey(ALIPAY_BLACKLIST_LION, StringUtils.join(blackList, ","), "aliPaySwitchUpdate");
+        } else {
+            blackList.add(Integer.parseInt(payChannelUpdateRequest.getDpShopId()));
+            result = LionOperationUtil.updateLionKey(ALIPAY_BLACKLIST_LION, StringUtils.join(blackList, ","), "aliPaySwitchUpdate");
+        }
+        if (result) {
+            return DBHackResponse.onSuccess();
+        } else {
+            return DBHackResponse.onServerErr("更改门店状态失败");
+        }
+    }
+}
