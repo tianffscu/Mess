@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
@@ -15,7 +16,7 @@ import static java.util.stream.Collectors.groupingBy;
 public class MyFiles {
 
     public static void main(String[] args) throws IOException {
-        Path path = Paths.get("/Users/tianfei/Desktop/test.txt");
+        Path path = Paths.get("/Users/tianfei/Desktop/389535.txt");
         System.out.println(countCharacterAppearTimes(path));
     }
 
@@ -24,7 +25,11 @@ public class MyFiles {
                 .stream()
                 .map(String::chars)
                 .flatMap(im -> im.mapToObj(c -> (char) c))
-                .filter(Character::isAlphabetic)
+                .filter(MyFiles::isArabic)
                 .collect(groupingBy(c -> c, counting()));
+    }
+
+    private static boolean isArabic(Character c) {
+        return c >= 'A' && c <= 'z';
     }
 }
